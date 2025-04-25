@@ -166,11 +166,6 @@ func (kv KV) Floats(key string, defaultValue ...[]float32) []float32 {
 	return val.values
 }
 
-func (kv KV) Bools(key string, defaultValue ...[]bool) []bool {
-	val, _ := keyValue(kv, key, &array[bool]{values: append(defaultValue, []bool(nil))[0]})
-	return val.values
-}
-
 func (kv KV) OllamaEngineRequired() bool {
 	return slices.Contains([]string{
 		"gemma3",
@@ -203,7 +198,7 @@ func keyValue[T valueTypes | arrayValueTypes](kv KV, key string, defaultValue ..
 		return val, true
 	}
 
-	slog.Debug("key with type not found", "key", key, "default", defaultValue[0])
+	slog.Warn("key with type not found", "key", key, "default", defaultValue[0])
 	return defaultValue[0], false
 }
 
