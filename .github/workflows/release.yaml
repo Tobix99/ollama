@@ -172,26 +172,18 @@ jobs:
           docker buildx imagetools inspect ${{ vars.DOCKER_ORG }}/ollama:${{ steps.metadata.outputs.version }}
         working-directory: ${{ runner.temp }}
 
-  # Aggregate all the assets and ship a release
-  release:
-    needs: [linux-build]
-    runs-on: linux
+  # Trigger downstream release process
+  trigger:
+    runs-on: ubuntu-latest
     environment: release
-    needs: [darwin-build, windows-build, windows-depends, linux-build]
+    needs: [linux-build]
     permissions:
       contents: write
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: dist-linux-*
-          path: dist
-          merge-multiple: true
-      - run: find . -type f -not -name 'sha256sum.txt' | xargs sha256sum | tee sha256sum.txt
-        working-directory: dist
-      - name: Create or update Release
+      - name: Create or update Release for tag
         run: |
           RELEASE_VERSION="$(echo ${GITHUB_REF_NAME} | cut -f1 -d-)"
           echo "Looking for existing release for ${RELEASE_VERSION}"
