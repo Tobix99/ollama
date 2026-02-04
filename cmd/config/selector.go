@@ -65,6 +65,10 @@ func (s *selectState) handleInput(event inputEvent, char byte) (done bool, resul
 		if len(filtered) > 0 && s.selected < len(filtered) {
 			return true, filtered[s.selected].Name, nil
 		}
+		// No matches but user typed something - return filter for pull prompt
+		if len(filtered) == 0 && s.filter != "" {
+			return true, s.filter, nil
+		}
 	case eventEscape:
 		return true, "", errCancelled
 	case eventBackspace:
@@ -275,11 +279,19 @@ func parseInput(r io.Reader) (inputEvent, byte, error) {
 func renderSelect(w io.Writer, prompt string, s *selectState) int {
 	filtered := s.filtered()
 
-	fmt.Fprintf(w, "%s %s\r\n", prompt, s.filter)
+	if s.filter == "" {
+		fmt.Fprintf(w, "%s %sType to filter...%s\r\n", prompt, ansiGray, ansiReset)
+	} else {
+		fmt.Fprintf(w, "%s %s\r\n", prompt, s.filter)
+	}
 	lineCount := 1
 
 	if len(filtered) == 0 {
-		fmt.Fprintf(w, "  %s(no matches)%s\r\n", ansiGray, ansiReset)
+		if s.filter != "" {
+			fmt.Fprintf(w, "  %s→ Download model: '%s'? Press Enter%s\r\n", ansiGray, s.filter, ansiReset)
+		} else {
+			fmt.Fprintf(w, "  %s(no matches)%s\r\n", ansiGray, ansiReset)
+		}
 		lineCount++
 	} else {
 		displayCount := min(len(filtered), maxDisplayedItems)
@@ -314,7 +326,11 @@ func renderSelect(w io.Writer, prompt string, s *selectState) int {
 func renderMultiSelect(w io.Writer, prompt string, s *multiSelectState) int {
 	filtered := s.filtered()
 
-	fmt.Fprintf(w, "%s %s\r\n", prompt, s.filter)
+	if s.filter == "" {
+		fmt.Fprintf(w, "%s %sType to filter...%s\r\n", prompt, ansiGray, ansiReset)
+	} else {
+		fmt.Fprintf(w, "%s %s\r\n", prompt, s.filter)
+	}
 	lineCount := 1
 
 	if len(filtered) == 0 {
@@ -345,10 +361,15 @@ func renderMultiSelect(w io.Writer, prompt string, s *multiSelectState) int {
 				suffix = " " + ansiGray + "(default)" + ansiReset
 			}
 
+			desc := ""
+			if item.Description != "" {
+				desc = " " + ansiGray + "- " + item.Description + ansiReset
+			}
+
 			if idx == s.highlighted && !s.focusOnButton {
-				fmt.Fprintf(w, "  %s%s %s %s%s%s\r\n", ansiBold, prefix, checkbox, item.Name, ansiReset, suffix)
+				fmt.Fprintf(w, "  %s%s %s %s%s%s%s\r\n", ansiBold, prefix, checkbox, item.Name, ansiReset, desc, suffix)
 			} else {
-				fmt.Fprintf(w, "  %s %s %s%s\r\n", prefix, checkbox, item.Name, suffix)
+				fmt.Fprintf(w, "  %s %s %s%s%s\r\n", prefix, checkbox, item.Name, desc, suffix)
 			}
 			lineCount++
 		}
